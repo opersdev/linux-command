@@ -33,8 +33,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: 准备 Android SDK（接受许可）
-        uses: android-actions/setup-android@v3
+      # GitHub runner 已预装 Android SDK 并接受许可，AGP 会自动补齐缺失组件
 
       - name: 拉取上游命令数据
         run: node scripts/gen-data.mjs
