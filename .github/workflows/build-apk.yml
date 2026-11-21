@@ -1,0 +1,84 @@
+name: Build APK
+
+# 每季度（2/5/8/11 月 1 日 11 点北京时间）自动检查上游更新；
+# 上游数据有变化才重新构建，也可以手动触发。
+on:
+  schedule:
+    - cron: "0 3 1 2,5,8,11 *" # UTC 3:00 = 北京时间 11:00
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "上游无更新时也强制构建"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: 准备 Android SDK（接受许可）
+        uses: android-actions/setup-android@v3
+
+      - name: 拉取上游命令数据
+        run: node scripts/gen-data.mjs
+
+      - name: 判断上游是否有更新
+        id: check
+        run: |
+          NEW=$(cat .last-upstream-sha)
+          OLD=$(git show HEAD:.last-upstream-sha 2>/dev/null || echo "none")
+          echo "旧: $OLD / 新: $NEW"
+          if [ "$NEW" = "$OLD" ] && [ "${{ inputs.force }}" != "true" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 构建 Release APK
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: 发布 Release
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(cut -c1-7 .last-upstream-sha)
+          TAG="v$(date +%Y%m%d)-${SHA}"
+          cp android/app/build/outputs/apk/release/app-release.apk "linux-command-${TAG}.apk"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .last-upstream-sha web/app-data.js
+          git commit -m "chore: 同步上游命令数据 ${SHA}" || echo "无变更需要提交"
+          git push
+          gh release create "$TAG" "linux-command-${TAG}.apk" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Linux 命令大全 ${TAG}" \
+            --notes "上游数据版本: jaywcjlove/linux-command@${SHA}
+
+          - 包含全部 ${SHA} 版本命令文档，完全离线可用
+          - 直接下载 APK 安装即可（需允许安装未知来源应用）"
+
+      - name: 上游无更新，跳过构建
+        if: steps.check.outputs.changed == 'false'
+        run: echo "上游数据与上次构建一致，跳过本次构建。"

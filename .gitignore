@@ -1,0 +1,15 @@
+# Gradle
+.gradle/
+build/
+android/app/build/
+android/build/
+android/local.properties
+
+# Node
+node_modules/
+tmp/
+
+# IDE
+.idea/
+*.iml
+.vscode/
