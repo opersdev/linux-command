@@ -37,6 +37,8 @@ jobs:
 
       - name: 拉取上游命令数据
         run: node scripts/gen-data.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: 判断上游是否有更新
         id: check

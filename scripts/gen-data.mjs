@@ -15,7 +15,10 @@ const WEB = join(ROOT, 'web');
 const UPSTREAM = 'jaywcjlove/linux-command';
 
 async function fetchJson(url) {
-  const res = await fetch(url, { headers: { 'User-Agent': 'linux-command-apk-builder' } });
+  const headers = { 'User-Agent': 'linux-command-apk-builder' };
+  // CI 环境用 GITHUB_TOKEN 认证，避免共享 IP 触发 API 限流
+  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.json();
 }
