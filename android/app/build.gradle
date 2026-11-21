@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.linuxcommand.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "io.github.linuxcommand.app"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file("release-key.jks")
+            storePassword "linuxcmd123"
+            keyAlias "linuxcmd"
+            keyPassword "linuxcmd123"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// assets 直接指向仓库根的 web 目录，无需复制
+android {
+    sourceSets {
+        main {
+            assets.srcDirs = ['src/main/assets', "$rootDir/../web"]
+        }
+    }
+}
